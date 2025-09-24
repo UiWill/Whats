@@ -1,0 +1,112 @@
+🗺️ Mapa da API – Fluxo completo
+1. Origem do evento
+
+Você clica no botão no seu sistema (ERP).
+
+Esse clique chama sua API passando o CNPJ da empresa.
+
+2. API – Entrada
+
+Endpoint (exemplo):
+
+POST /api/enviar-relatorio
+Body: { "cnpj": "62567108000101" }
+
+3. Consulta no Banco Oracle
+
+A API conecta no banco Oracle (config que você mostrou).
+
+Consulta na tabela D_EMPRESAS:
+
+SELECT NUMERO_WHATSAPP_GRUPO
+FROM D_EMPRESAS
+WHERE CNPJ_CO2 = :cnpj
+
+
+Retorna o número do grupo correspondente à empresa.
+
+4. Montagem do caminho da imagem
+
+Com o cnpj, a API monta o caminho do arquivo:
+
+C:\br.com.ControleVendaComercio\ERP_{cnpj}_VENDAS_COMERCIO\RelatorioVendas.jpg
+
+
+Exemplo:
+
+C:\br.com.ControleVendaComercio\ERP_62567108000101_VENDAS_COMERCIO\RelatorioVendas.jpg
+
+5. Upload da imagem
+
+Agora você tem duas opções:
+
+(A) Enviar imagem local
+
+A API lê o arquivo .jpg do caminho local.
+
+Usa curl_file_create (PHP) ou form-data (Node.js) para enviar o binário pro Whatsmeow / WPPConnect.
+
+(B) Enviar por URL
+
+Se o seu sistema expuser essa imagem via servidor HTTP (ex: http://meuserver/relatorios/{cnpj}/RelatorioVendas.jpg),
+fica mais simples → API só manda a URL pro WhatsApp.
+
+6. Envio para WhatsApp
+
+A API chama o serviço de mensagens (Whatsmeow, WPPConnect ou outro).
+
+Passa:
+
+phone: número do grupo (ex: 1203xxxx@g.us)
+
+filename: "RelatorioVendas.jpg"
+
+caption: "Relatório do dia"
+
+Arquivo (file) ou URL (path)
+
+7. Resposta
+
+Se envio ok → retorna 200 { "status": "enviado" }
+
+Se erro → retorna 400 { "status": "erro", "mensagem": "não achou imagem" }
+
+📌 Estrutura da API
+Endpoints principais
+
+POST /api/enviar-relatorio
+
+Entrada: { "cnpj": "..." }
+
+Ação: consulta DB, pega caminho, envia imagem para grupo.
+
+Saída: { "status": "enviado", "grupo": "...", "cnpj": "..." }
+
+(Opcional) GET /api/teste-conexao
+
+Para validar se está conectado no banco e no WhatsApp.
+
+🔒 Boas práticas para não cair
+
+Tratar erros (arquivo não existe, grupo não encontrado, conexão caiu).
+
+Logs (guardar data/hora de cada envio).
+
+Fila de envio se um dia precisar mandar pra muitas empresas.
+
+Controle de sessão WhatsApp (se usar WPPConnect, monitorar se a sessão caiu e reautenticar).
+
+👉 Resumindo:
+
+ERP → chama API com CNPJ → API consulta Oracle → acha grupo → monta caminho → pega imagem → envia pro WhatsApp.
+
+
+
+
+para coenctar no oracle aqui esta a senha 
+Nome do usuario: DID_SISTEMAS
+Senha: D_d2017
+
+nome do Host: nuvem.dnotas.com.br
+porta: 1521
+SID: xe

@@ -1,0 +1,35 @@
+{
+  "name": "erp-whatsapp-api",
+  "version": "1.0.0",
+  "description": "API para integração ERP com WhatsApp Business - Envio de relatórios de vendas",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "npm run teste-conexao",
+    "teste-conexao": "node src/test-connection.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "oracledb": "^6.0.3",
+    "@wppconnect-team/wppconnect": "^1.30.0",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "morgan": "^1.10.0",
+    "dotenv": "^16.3.1",
+    "multer": "^1.4.5-lts.1",
+    "fs-extra": "^11.1.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "keywords": [
+    "whatsapp",
+    "erp",
+    "oracle",
+    "wppconnect",
+    "relatorio-vendas"
+  ],
+  "author": "ERP Sistemas",
+  "license": "MIT"
+}
