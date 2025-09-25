@@ -1,9 +1,130 @@
-const Database = require('../config/database');
 const WhatsAppService = require('../services/whatsapp');
-const FileService = require('../services/fileService');
 const { logActivity } = require('../utils/logger');
 
 class ReportController {
+  // NOVO Endpoint flexível: POST /api/enviar-imagem
+  static async enviarImagem(req, res) {
+    const startTime = Date.now();
+    const { imagemBase64, numeroGrupo, mensagem } = req.body;
+
+    // Log da requisição
+    logActivity('INFO', 'Iniciando envio de imagem', { numeroGrupo, temMensagem: !!mensagem, ip: req.ip });
+
+    try {
+      // Validações básicas
+      if (!imagemBase64) {
+        const error = { success: false, message: 'Imagem (base64 ou caminho) é obrigatória', code: 'MISSING_IMAGE' };
+        logActivity('ERROR', 'Imagem não fornecida', { ip: req.ip });
+        return res.status(400).json(error);
+      }
+
+      if (!numeroGrupo) {
+        const error = { success: false, message: 'Número do grupo é obrigatório', code: 'MISSING_GROUP' };
+        logActivity('ERROR', 'Número do grupo não fornecido', { ip: req.ip });
+        return res.status(400).json(error);
+      }
+
+      // Limpar número do grupo (remover caracteres especiais)
+      const grupoLimpo = numeroGrupo.toString().replace(/\D/g, '');
+
+      if (!grupoLimpo) {
+        const error = { success: false, message: 'Número do grupo inválido', code: 'INVALID_GROUP' };
+        logActivity('ERROR', 'Grupo inválido', { numeroGrupo, grupoLimpo });
+        return res.status(400).json(error);
+      }
+
+      // Verificar se imagem base64 é válida
+      const base64Regex = /^data:image\/(jpeg|jpg|png|gif);base64,/;
+      if (!base64Regex.test(imagemBase64)) {
+        const error = {
+          success: false,
+          message: 'Formato de imagem inválido. Use: data:image/jpeg;base64,... ou similar',
+          code: 'INVALID_IMAGE_FORMAT'
+        };
+        logActivity('ERROR', 'Formato de imagem inválido', { grupoLimpo });
+        return res.status(400).json(error);
+      }
+
+      // Verificar conexão WhatsApp
+      if (!WhatsAppService.isReady) {
+        const error = { success: false, message: 'WhatsApp não está conectado', code: 'WHATSAPP_DISCONNECTED' };
+        logActivity('ERROR', 'WhatsApp não conectado', { grupoLimpo });
+        return res.status(503).json(error);
+      }
+
+      // Enviar imagem para o grupo
+      console.log(`📱 Enviando imagem para grupo: ${grupoLimpo}`);
+      console.log(`💬 Mensagem: ${mensagem || 'Sem mensagem'}`);
+
+      const whatsappResult = await WhatsAppService.sendImageBase64ToGroup(
+        grupoLimpo,
+        imagemBase64,
+        mensagem || ''
+      );
+
+      if (!whatsappResult.success) {
+        const error = {
+          success: false,
+          message: `Erro ao enviar WhatsApp: ${whatsappResult.error}`,
+          code: 'WHATSAPP_SEND_ERROR'
+        };
+        logActivity('ERROR', 'Erro no envio WhatsApp', {
+          grupo: grupoLimpo,
+          error: whatsappResult.error
+        });
+        return res.status(500).json(error);
+      }
+
+      // Resposta de sucesso
+      const duration = Date.now() - startTime;
+      const response = {
+        success: true,
+        status: 'enviado',
+        data: {
+          grupo: grupoLimpo,
+          mensagem: mensagem || null,
+          messageId: whatsappResult.messageId,
+          timestamp: whatsappResult.timestamp,
+          groupName: whatsappResult.groupName || null
+        },
+        meta: {
+          duration: `${duration}ms`,
+          processedAt: new Date().toISOString(),
+          imagemTamanho: Math.round(imagemBase64.length / 1024) + 'KB'
+        }
+      };
+
+      logActivity('SUCCESS', 'Imagem enviada com sucesso', {
+        grupo: grupoLimpo,
+        messageId: whatsappResult.messageId,
+        duration,
+        imagemTamanho: response.meta.imagemTamanho
+      });
+
+      return res.status(200).json(response);
+
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      console.error('❌ Erro interno:', error.message);
+
+      logActivity('ERROR', 'Erro interno no envio', {
+        grupo: numeroGrupo,
+        error: error.message,
+        stack: error.stack,
+        duration
+      });
+
+      return res.status(500).json({
+        success: false,
+        message: 'Erro interno do servidor',
+        code: 'INTERNAL_ERROR',
+        meta: {
+          duration: `${duration}ms`,
+          timestamp: new Date().toISOString()
+        }
+      });
+    }
+  }
   // Endpoint principal: POST /api/enviar-relatorio
   static async enviarRelatorio(req, res) {
     const startTime = Date.now();
@@ -151,16 +272,15 @@ class ReportController {
   static async testeConexao(req, res) {
     try {
       const tests = {
-        database: await Database.testConnection(),
         whatsapp: await WhatsAppService.testConnection(),
         timestamp: new Date().toISOString()
       };
 
-      const allOk = tests.database.success && tests.whatsapp.success;
+      const allOk = tests.whatsapp.success;
 
       return res.status(allOk ? 200 : 503).json({
         success: allOk,
-        message: allOk ? 'Todas as conexões OK' : 'Algumas conexões com problema',
+        message: allOk ? 'WhatsApp conectado' : 'WhatsApp desconectado',
         tests: tests
       });
 
@@ -215,40 +335,18 @@ class ReportController {
     }
   }
 
-  // Endpoint para informações de empresa: GET /api/empresa/:cnpj
+  // Endpoint para informações de empresa: GET /api/empresa/:cnpj (DESABILITADO - usar nova API)
   static async getEmpresaInfo(req, res) {
-    try {
-      const { cnpj } = req.params;
-      const cnpjLimpo = cnpj.replace(/\D/g, '');
-
-      if (cnpjLimpo.length !== 14) {
-        return res.status(400).json({
-          success: false,
-          message: 'CNPJ deve ter 14 dígitos'
-        });
+    return res.status(410).json({
+      success: false,
+      message: 'Endpoint descontinuado. Use a nova API: POST /api/enviar-imagem',
+      newEndpoint: 'POST /api/enviar-imagem',
+      example: {
+        imagemBase64: 'data:image/jpeg;base64,...',
+        numeroGrupo: '120363142926103927',
+        mensagem: 'Sua mensagem aqui'
       }
-
-      const empresaResult = await Database.getWhatsAppGroupByCNPJ(cnpjLimpo);
-      const fileResult = await FileService.getReportInfo(cnpjLimpo);
-
-      return res.json({
-        success: true,
-        data: {
-          empresa: empresaResult.success ? empresaResult.data : null,
-          arquivo: fileResult.success ? fileResult.data : null,
-          status: {
-            empresaEncontrada: empresaResult.success,
-            arquivoEncontrado: fileResult.success
-          }
-        }
-      });
-
-    } catch (error) {
-      return res.status(500).json({
-        success: false,
-        message: error.message
-      });
-    }
+    });
   }
 }
 

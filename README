@@ -44,7 +44,7 @@ Agora você tem duas opções:
 
 A API lê o arquivo .jpg do caminho local.
 
-Usa curl_file_create (PHP) ou form-data (Node.js) para enviar o binário pro Whatsmeow / WPPConnect.
+Usa form-data (Node.js) para enviar o binário pro Whatsmeow / WPPConnect.
 
 (B) Enviar por URL
 
@@ -110,3 +110,56 @@ Senha: D_d2017
 nome do Host: nuvem.dnotas.com.br
 porta: 1521
 SID: xe
+
+
+
+ 📋 Comandos para rodar no servidor (igual aqui):
+
+  # 1. Primeiro, clone o projeto no servidor
+  git clone https://github.com/UiWill/Whats.git
+  cd Whats
+
+  # 2. Instalar dependências Node.js
+  npm install
+
+  # 3. Rodar o instalador automático do Oracle Client
+  node install-oracle-client.js
+
+  O script install-oracle-client.js vai fazer TUDO automaticamente:
+
+  ✅ Baixar Oracle Instant Client (70MB)✅ Extrair em C:\oracle\instantclient_21_13✅ Adicionar ao        
+  PATH do Windows✅ Atualizar arquivo .env✅ Verificar se tudo está funcionando
+
+  📝 Depois de rodar, teste:
+
+  # 4. Testar conexão Oracle + WhatsApp
+  npm run teste-conexao
+
+  # 5. Se der tudo certo, iniciar servidor
+  npm run dev
+
+  ⚙️ Configurar .env do servidor:
+
+  Só copie e edite o arquivo .env com os dados do servidor:
+
+  # Servidor
+  PORT=3000
+  NODE_ENV=production
+
+  # Oracle Database (SEUS DADOS)
+  DB_USER=DID_SISTEMAS
+  DB_PASSWORD=D_d2017
+  DB_HOST=nuvem.dnotas.com.br
+  DB_PORT=1521
+  DB_SID=xe
+  ORACLE_CLIENT_PATH=C:\oracle\instantclient_21_13
+
+  # WhatsApp
+  WHATSAPP_SESSION_NAME=erp-session-servidor
+
+  # Paths (AJUSTAR para o servidor)
+  RELATORIOS_BASE_PATH=C:\\\\caminho\\\\dos\\\\relatorios\\\\no\\\\servidor
+  RELATORIO_FILENAME=RelatorioVendas.jpg
+
+  🚨 IMPORTANTE: Se der erro de permissão, rode o CMD como Administrador antes de executar os
+  comandos.

@@ -20,9 +20,9 @@ class WhatsAppService {
         statusFind: (statusSession, session) => {
           console.log('📊 Status da sessão:', statusSession, session);
         },
-        headless: process.env.WHATSAPP_HEADLESS === 'true',
+        headless: 'new',
         devtools: false,
-        useChrome: true,
+        useChrome: false,
         debug: false,
         logQR: true,
         browserArgs: [
@@ -32,7 +32,9 @@ class WhatsAppService {
           '--disable-accelerated-2d-canvas',
           '--no-first-run',
           '--no-zygote',
-          '--disable-gpu'
+          '--disable-gpu',
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor'
         ]
       });
 
@@ -65,6 +67,52 @@ class WhatsAppService {
         this.client.sendText(message.chatId, '✅ Bot ERP está online!');
       }
     });
+  }
+
+  static async sendImageBase64ToGroup(groupNumber, imageBase64, caption = '') {
+    try {
+      if (!this.isReady || !this.client) {
+        throw new Error('WhatsApp não está conectado. Execute a inicialização primeiro.');
+      }
+
+      // Formatar número do grupo
+      const groupId = this.formatGroupId(groupNumber);
+
+      // Verificar se o grupo existe
+      const chats = await this.client.listChats();
+      const groups = chats.filter(chat => chat.isGroup);
+      const targetGroup = groups.find(group => (group.id._serialized || group.id) === groupId);
+
+      if (!targetGroup) {
+        throw new Error(`Grupo ${groupNumber} não encontrado. Verifique se o bot está no grupo.`);
+      }
+
+      // Enviar imagem base64
+      const result = await this.client.sendFileFromBase64(
+        groupId,
+        imageBase64,
+        'imagem.jpg', // nome do arquivo
+        caption
+      );
+
+      console.log('✅ Imagem base64 enviada com sucesso para:', targetGroup.name);
+
+      return {
+        success: true,
+        messageId: result.id,
+        groupName: targetGroup.name,
+        groupId: groupId,
+        timestamp: new Date().toISOString()
+      };
+
+    } catch (error) {
+      console.error('❌ Erro ao enviar imagem base64:', error.message);
+      return {
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      };
+    }
   }
 
   static async sendImageToGroup(groupNumber, imagePath, caption = '') {

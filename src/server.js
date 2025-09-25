@@ -6,7 +6,6 @@ const path = require('path');
 require('dotenv').config();
 
 // Importar serviços
-const Database = require('./config/database');
 const WhatsAppService = require('./services/whatsapp');
 const ReportController = require('./controllers/reportController');
 const { Logger, logActivity } = require('./utils/logger');
@@ -28,10 +27,6 @@ class Server {
 
       // Configurar error handlers
       this.setupErrorHandlers();
-
-      // Inicializar banco de dados
-      console.log('🔄 Inicializando conexão com Oracle...');
-      await Database.initialize();
 
       // Inicializar WhatsApp
       console.log('🔄 Inicializando WhatsApp...');
@@ -99,7 +94,10 @@ class Server {
       });
     });
 
-    // Rota principal do ERP
+    // NOVA Rota simplificada (recebe base64 diretamente)
+    this.app.post('/api/enviar-imagem', ReportController.enviarImagem);
+
+    // Rota principal do ERP (antiga - mantida para compatibilidade)
     this.app.post('/api/enviar-relatorio', ReportController.enviarRelatorio);
 
     // Teste de conexões
@@ -114,14 +112,12 @@ class Server {
     // Status do sistema
     this.app.get('/api/status', async (req, res) => {
       try {
-        const dbStatus = await Database.testConnection();
         const whatsappStatus = await WhatsAppService.testConnection();
 
         res.json({
           success: true,
           timestamp: new Date().toISOString(),
           services: {
-            database: dbStatus,
             whatsapp: whatsappStatus
           },
           system: {
@@ -165,8 +161,10 @@ class Server {
         success: false,
         message: 'Endpoint não encontrado',
         availableEndpoints: [
-          'POST /api/enviar-relatorio',
+          'POST /api/enviar-imagem (NOVO - base64)',
+          'POST /api/enviar-relatorio (legado)',
           'GET /api/teste-conexao',
+          'GET /api/grupos',
           'GET /api/empresa/:cnpj',
           'GET /api/status',
           'GET /api/logs',
@@ -221,9 +219,6 @@ class Server {
           // Fechar WhatsApp
           await WhatsAppService.close();
 
-          // Fechar pool Oracle
-          await Database.close();
-
           console.log('✅ Cleanup concluído. Encerrando processo.');
           logActivity('INFO', 'Graceful shutdown concluído', { signal });
 
@@ -271,10 +266,11 @@ class Server {
     this.server = this.app.listen(this.port, '0.0.0.0', () => {
       console.log(`\\n🚀 Servidor rodando em http://localhost:${this.port}`);
       console.log(`📚 Documentação da API:`);
-      console.log(`   POST http://localhost:${this.port}/api/enviar-relatorio`);
-      console.log(`   GET  http://localhost:${this.port}/api/teste-conexao`);
-      console.log(`   GET  http://localhost:${this.port}/api/status`);
-      console.log(`   GET  http://localhost:${this.port}/health\\n`);
+      console.log(`   📷 POST http://localhost:${this.port}/api/enviar-imagem (NOVO - base64)`);
+      console.log(`   📄 POST http://localhost:${this.port}/api/enviar-relatorio (legado)`);
+      console.log(`   🔍 GET  http://localhost:${this.port}/api/teste-conexao`);
+      console.log(`   📊 GET  http://localhost:${this.port}/api/status`);
+      console.log(`   ❤️  GET  http://localhost:${this.port}/health\\n`);
 
       logActivity('INFO', 'Servidor iniciado', {
         port: this.port,
