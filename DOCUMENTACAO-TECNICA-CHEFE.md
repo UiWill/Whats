@@ -1,38 +1,10 @@
-# 📱 API WhatsApp - Como Usar
+# 📱 Como Usar a API WhatsApp
 
-**O que faz:** Envia imagens para grupos do WhatsApp Business automaticamente.
+## 1. Ver Grupos (Opcional)
 
----
-
-## 🚀 **1. Instalar no Servidor**
-
-```bash
-git clone https://github.com/UiWill/Whats.git
-cd Whats
-npm install
-npm start
-```
-
-**✅ Servidor rodando em:** `http://localhost:3000`
-
----
-
-## 📱 **2. Conectar WhatsApp (1 vez só)**
-
-1. Execute `npm start`
-2. **QR Code aparece** no terminal
-3. **Escaneie com WhatsApp Business** da empresa
-4. ✅ **Pronto!** Fica conectado para sempre
-
----
-
-## 👥 **3. Ver Grupos (Opcional)**
-
-**No Insomnia:**
-
-- **Método:** `GET`
-- **URL:** `http://localhost:3000/api/grupos`
-- **Clique em Send**
+**Método:** `GET`
+**URL:** `http://localhost:3000/api/grupos`
+**Headers:** Nenhum
 
 **Resposta:**
 ```json
@@ -47,42 +19,29 @@ npm start
 }
 ```
 
-📝 **Anote o `numeroGrupo`**
-
 ---
 
-## 📤 **4. Enviar Imagem**
+## 2. Enviar Imagem
 
-**No Insomnia:**
+**Método:** `POST`
+**URL:** `http://localhost:3000/api/enviar-imagem`
+**Headers:** `Content-Type: application/json`
 
-### **Configuração:**
-- **Método:** `POST`
-- **URL:** `http://localhost:3000/api/enviar-imagem`
-- **Header:** `Content-Type: application/json`
-
-### **Body (JSON):**
+**Body (JSON):**
 ```json
 {
-  "imagemBase64": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=",
+  "imagemBase64": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEA...",
   "numeroGrupo": "120363142926103927",
   "mensagem": "📊 Relatório de Vendas!"
 }
 ```
 
-### **Explicação:**
-- **`imagemBase64`** = Sua imagem convertida (use conversor online)
-- **`numeroGrupo`** = Número do grupo (do passo 3)
-- **`mensagem`** = Texto que aparece com a imagem
+**Campos:**
+- `imagemBase64` = Imagem convertida em base64
+- `numeroGrupo` = Número do grupo WhatsApp
+- `mensagem` = Texto (opcional)
 
-### **Converter imagem para base64:**
-1. Acesse: https://www.base64-image.de/
-2. Faça upload da imagem
-3. Copie o resultado completo
-
----
-
-## ✅ **Resposta de Sucesso**
-
+**Resposta de sucesso:**
 ```json
 {
   "success": true,
@@ -95,22 +54,10 @@ npm start
 }
 ```
 
-## ❌ **Erros Comuns**
-
-| Erro | Solução |
-|------|---------|
-| `WHATSAPP_DISCONNECTED` | Reconectar WhatsApp (escanear QR) |
-| `MISSING_IMAGE` | Verificar se imagemBase64 foi enviado |
-| `INVALID_IMAGE_FORMAT` | Base64 deve começar com `data:image/` |
-| `Grupo não encontrado` | Verificar se numeroGrupo está correto |
-
 ---
 
-## 🎯 **Resumo Rápido**
+## 3. Converter Imagem para Base64
 
-1. **Instalar:** `npm install` e `npm start`
-2. **Conectar:** Escanear QR Code 1 vez
-3. **Ver grupos:** GET `/api/grupos`
-4. **Enviar:** POST `/api/enviar-imagem` com JSON
-
-**É isso!** 🚀
+1. Acesse: https://www.base64-image.de/
+2. Faça upload da imagem
+3. Copie o resultado completo
