@@ -127,16 +127,21 @@ class WhatsAppService {
         throw new Error(`${chatType.charAt(0).toUpperCase() + chatType.slice(1)} ${chatNumber} não encontrado. Verifique se o bot tem acesso.`);
       }
 
-      // Enviar imagem base64
+      // Detectar tipo de arquivo e definir nome/extensão
+      const isPDF = imageBase64.startsWith('data:application/pdf;base64,');
+      const fileName = isPDF ? 'documento.pdf' : 'imagem.jpg';
+      const fileType = isPDF ? 'documento' : 'imagem';
+
+      // Enviar arquivo base64 (imagem ou PDF)
       const result = await this.client.sendFileFromBase64(
         chatId,
         imageBase64,
-        'imagem.jpg', // nome do arquivo
+        fileName,
         caption
       );
 
       const chatType = isGroup ? 'grupo' : 'contato';
-      console.log(`✅ Imagem base64 enviada com sucesso para ${chatType}:`, targetChat.name || chatNumber);
+      console.log(`✅ ${fileType.charAt(0).toUpperCase() + fileType.slice(1)} base64 enviado com sucesso para ${chatType}:`, targetChat.name || chatNumber);
 
       return {
         success: true,
@@ -148,7 +153,7 @@ class WhatsAppService {
       };
 
     } catch (error) {
-      console.error('❌ Erro ao enviar imagem base64:', error.message);
+      console.error('❌ Erro ao enviar arquivo base64:', error.message);
       return {
         success: false,
         error: error.message,

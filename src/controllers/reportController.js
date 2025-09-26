@@ -33,15 +33,15 @@ class ReportController {
         return res.status(400).json(error);
       }
 
-      // Verificar se imagem base64 é válida
-      const base64Regex = /^data:image\/(jpeg|jpg|png|gif);base64,/;
+      // Verificar se arquivo base64 é válido (imagem ou PDF)
+      const base64Regex = /^data:(image\/(jpeg|jpg|png|gif)|application\/pdf);base64,/;
       if (!base64Regex.test(imagemBase64)) {
         const error = {
           success: false,
-          message: 'Formato de imagem inválido. Use: data:image/jpeg;base64,... ou similar',
-          code: 'INVALID_IMAGE_FORMAT'
+          message: 'Formato de arquivo inválido. Use: data:image/jpeg;base64,... ou data:application/pdf;base64,...',
+          code: 'INVALID_FILE_FORMAT'
         };
-        logActivity('ERROR', 'Formato de imagem inválido', { numeroLimpo });
+        logActivity('ERROR', 'Formato de arquivo inválido', { numeroLimpo });
         return res.status(400).json(error);
       }
 
