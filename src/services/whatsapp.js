@@ -221,28 +221,24 @@ class WhatsAppService {
       // É um grupo
       return `${cleanNumber}@g.us`;
     } else {
-      // É um número individual - verificar se precisa adicionar código do país Brasil (+55)
+      // É um número individual - verificar formato correto
 
-      // Se tem 11 dígitos (ex: 37991470016), adicionar 55 na frente
+      // Se tem 11 dígitos (ex: 37991470016) = DD + 9 dígitos, adicionar 55
       if (cleanNumber.length === 11) {
         cleanNumber = '55' + cleanNumber;
         console.log(`📞 Adicionado código do Brasil (+55): ${cleanNumber}`);
       }
-      // Se tem 10 dígitos (ex: 991470016), adicionar 5537 na frente (assumindo MG)
-      else if (cleanNumber.length === 10) {
-        // Verificar se começa com 9 (celular)
-        if (cleanNumber.startsWith('9')) {
-          cleanNumber = '5537' + cleanNumber; // Assumir MG (37)
-          console.log(`📞 Adicionado código Brasil+MG (+5537): ${cleanNumber}`);
-        } else {
-          cleanNumber = '55' + cleanNumber;
-          console.log(`📞 Adicionado código do Brasil (+55): ${cleanNumber}`);
-        }
+      // Se tem menos que 11 dígitos, retornar erro
+      else if (cleanNumber.length < 11) {
+        throw new Error(`Número inválido: ${number}. Use o formato DDNNNNNNNNN (ex: 37991470016)`);
       }
-      // Se tem 9 dígitos (ex: 91470016), adicionar 55379 na frente
-      else if (cleanNumber.length === 9) {
-        cleanNumber = '55379' + cleanNumber;
-        console.log(`📞 Adicionado código Brasil+MG completo (+55379): ${cleanNumber}`);
+      // Se já tem 13 dígitos (55 + DD + 9), está correto
+      else if (cleanNumber.length === 13) {
+        console.log(`📞 Número já formatado corretamente: ${cleanNumber}`);
+      }
+      // Se tem 12 ou mais de 13 dígitos, formato inválido
+      else {
+        throw new Error(`Número inválido: ${number}. Use o formato DDNNNNNNNNN (ex: 37991470016)`);
       }
 
       return `${cleanNumber}@c.us`;
