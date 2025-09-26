@@ -81,7 +81,34 @@ class WhatsAppService {
 
       // Verificar se o chat existe
       const chats = await this.client.listChats();
-      const targetChat = chats.find(chat => (chat.id._serialized || chat.id) === chatId);
+      let targetChat = chats.find(chat => (chat.id._serialized || chat.id) === chatId);
+
+      // Se é um contato individual e não existe, tentar criar/verificar se o número é válido
+      if (!targetChat && !isGroup) {
+        try {
+          // Verificar se o número existe no WhatsApp
+          const numberCheck = await this.client.checkNumberStatus(chatId);
+
+          if (!numberCheck.exists) {
+            throw new Error(`Número ${chatNumber} não está registrado no WhatsApp`);
+          }
+
+          console.log(`📞 Número ${chatNumber} validado, criando conversa...`);
+
+          // Criar/inicializar chat enviando uma mensagem simples primeiro
+          await this.client.sendText(chatId, ' '); // Mensagem vazia para inicializar
+
+          // Aguardar um momento para o chat ser criado
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+          // Buscar novamente o chat
+          const updatedChats = await this.client.listChats();
+          targetChat = updatedChats.find(chat => (chat.id._serialized || chat.id) === chatId);
+
+        } catch (error) {
+          throw new Error(`Erro ao validar número ${chatNumber}: ${error.message}`);
+        }
+      }
 
       if (!targetChat) {
         const chatType = isGroup ? 'grupo' : 'contato';
