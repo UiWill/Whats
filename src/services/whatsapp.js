@@ -213,16 +213,38 @@ class WhatsAppService {
 
   static formatChatId(number) {
     // Remove caracteres especiais
-    const cleanNumber = number.toString().replace(/\D/g, '');
+    let cleanNumber = number.toString().replace(/\D/g, '');
 
     // Detectar se é grupo ou número individual
-    // Grupos geralmente têm mais de 11 dígitos (formato: 120363142926103927)
-    // Números individuais têm entre 10-14 dígitos (formato brasileiro: 5537991470016)
+    // Grupos geralmente têm mais de 15 dígitos (formato: 120363142926103927)
     if (cleanNumber.length > 15) {
       // É um grupo
       return `${cleanNumber}@g.us`;
     } else {
-      // É um número individual
+      // É um número individual - verificar se precisa adicionar código do país Brasil (+55)
+
+      // Se tem 11 dígitos (ex: 37991470016), adicionar 55 na frente
+      if (cleanNumber.length === 11) {
+        cleanNumber = '55' + cleanNumber;
+        console.log(`📞 Adicionado código do Brasil (+55): ${cleanNumber}`);
+      }
+      // Se tem 10 dígitos (ex: 991470016), adicionar 5537 na frente (assumindo MG)
+      else if (cleanNumber.length === 10) {
+        // Verificar se começa com 9 (celular)
+        if (cleanNumber.startsWith('9')) {
+          cleanNumber = '5537' + cleanNumber; // Assumir MG (37)
+          console.log(`📞 Adicionado código Brasil+MG (+5537): ${cleanNumber}`);
+        } else {
+          cleanNumber = '55' + cleanNumber;
+          console.log(`📞 Adicionado código do Brasil (+55): ${cleanNumber}`);
+        }
+      }
+      // Se tem 9 dígitos (ex: 91470016), adicionar 55379 na frente
+      else if (cleanNumber.length === 9) {
+        cleanNumber = '55379' + cleanNumber;
+        console.log(`📞 Adicionado código Brasil+MG completo (+55379): ${cleanNumber}`);
+      }
+
       return `${cleanNumber}@c.us`;
     }
   }
