@@ -223,22 +223,22 @@ class WhatsAppService {
     } else {
       // É um número individual - verificar formato correto
 
-      // Se tem 11 dígitos (ex: 37991470016) = DD + 9 dígitos, adicionar 55
-      if (cleanNumber.length === 11) {
+      // Se tem 10 dígitos (ex: 3791470016) = DD + 8 dígitos, adicionar 55
+      if (cleanNumber.length === 10) {
         cleanNumber = '55' + cleanNumber;
         console.log(`📞 Adicionado código do Brasil (+55): ${cleanNumber}`);
       }
-      // Se tem menos que 11 dígitos, retornar erro
-      else if (cleanNumber.length < 11) {
-        throw new Error(`Número inválido: ${number}. Use o formato DDNNNNNNNNN (ex: 37991470016)`);
+      // Se tem menos que 10 dígitos, retornar erro
+      else if (cleanNumber.length < 10) {
+        throw new Error(`Número inválido: ${number}. Use o formato DDNNNNNNNN (ex: 3791470016)`);
       }
-      // Se já tem 13 dígitos (55 + DD + 9), está correto
-      else if (cleanNumber.length === 13) {
+      // Se já tem 12 dígitos (55 + DD + 8), está correto
+      else if (cleanNumber.length === 12) {
         console.log(`📞 Número já formatado corretamente: ${cleanNumber}`);
       }
-      // Se tem 12 ou mais de 13 dígitos, formato inválido
+      // Se tem formato inválido
       else {
-        throw new Error(`Número inválido: ${number}. Use o formato DDNNNNNNNNN (ex: 37991470016)`);
+        throw new Error(`Número inválido: ${number}. Use o formato DDNNNNNNNN (ex: 3791470016)`);
       }
 
       return `${cleanNumber}@c.us`;
