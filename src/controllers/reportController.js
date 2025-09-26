@@ -19,17 +19,17 @@ class ReportController {
       }
 
       if (!numeroGrupo) {
-        const error = { success: false, message: 'Número do grupo é obrigatório', code: 'MISSING_GROUP' };
-        logActivity('ERROR', 'Número do grupo não fornecido', { ip: req.ip });
+        const error = { success: false, message: 'Número do destinatário é obrigatório', code: 'MISSING_RECIPIENT' };
+        logActivity('ERROR', 'Número do destinatário não fornecido', { ip: req.ip });
         return res.status(400).json(error);
       }
 
-      // Limpar número do grupo (remover caracteres especiais)
-      const grupoLimpo = numeroGrupo.toString().replace(/\D/g, '');
+      // Limpar número (remover caracteres especiais)
+      const numeroLimpo = numeroGrupo.toString().replace(/\D/g, '');
 
-      if (!grupoLimpo) {
-        const error = { success: false, message: 'Número do grupo inválido', code: 'INVALID_GROUP' };
-        logActivity('ERROR', 'Grupo inválido', { numeroGrupo, grupoLimpo });
+      if (!numeroLimpo) {
+        const error = { success: false, message: 'Número do destinatário inválido', code: 'INVALID_RECIPIENT' };
+        logActivity('ERROR', 'Número inválido', { numeroGrupo, numeroLimpo });
         return res.status(400).json(error);
       }
 
@@ -41,23 +41,27 @@ class ReportController {
           message: 'Formato de imagem inválido. Use: data:image/jpeg;base64,... ou similar',
           code: 'INVALID_IMAGE_FORMAT'
         };
-        logActivity('ERROR', 'Formato de imagem inválido', { grupoLimpo });
+        logActivity('ERROR', 'Formato de imagem inválido', { numeroLimpo });
         return res.status(400).json(error);
       }
 
       // Verificar conexão WhatsApp
       if (!WhatsAppService.isReady) {
         const error = { success: false, message: 'WhatsApp não está conectado', code: 'WHATSAPP_DISCONNECTED' };
-        logActivity('ERROR', 'WhatsApp não conectado', { grupoLimpo });
+        logActivity('ERROR', 'WhatsApp não conectado', { numeroLimpo });
         return res.status(503).json(error);
       }
 
-      // Enviar imagem para o grupo
-      console.log(`📱 Enviando imagem para grupo: ${grupoLimpo}`);
+      // Detectar se é grupo ou número individual automaticamente
+      const isGroup = numeroLimpo.length > 15;
+      const chatType = isGroup ? 'grupo' : 'contato';
+
+      // Enviar imagem
+      console.log(`📱 Enviando imagem para ${chatType}: ${numeroLimpo}`);
       console.log(`💬 Mensagem: ${mensagem || 'Sem mensagem'}`);
 
       const whatsappResult = await WhatsAppService.sendImageBase64ToGroup(
-        grupoLimpo,
+        numeroLimpo,
         imagemBase64,
         mensagem || ''
       );
@@ -69,7 +73,8 @@ class ReportController {
           code: 'WHATSAPP_SEND_ERROR'
         };
         logActivity('ERROR', 'Erro no envio WhatsApp', {
-          grupo: grupoLimpo,
+          destinatario: numeroLimpo,
+          chatType: chatType,
           error: whatsappResult.error
         });
         return res.status(500).json(error);
@@ -81,11 +86,13 @@ class ReportController {
         success: true,
         status: 'enviado',
         data: {
-          grupo: grupoLimpo,
+          destinatario: numeroLimpo,
+          chatType: chatType,
+          isGroup: whatsappResult.isGroup,
           mensagem: mensagem || null,
           messageId: whatsappResult.messageId,
           timestamp: whatsappResult.timestamp,
-          groupName: whatsappResult.groupName || null
+          chatName: whatsappResult.chatName || null
         },
         meta: {
           duration: `${duration}ms`,
@@ -95,7 +102,8 @@ class ReportController {
       };
 
       logActivity('SUCCESS', 'Imagem enviada com sucesso', {
-        grupo: grupoLimpo,
+        destinatario: numeroLimpo,
+        chatType: chatType,
         messageId: whatsappResult.messageId,
         duration,
         imagemTamanho: response.meta.imagemTamanho

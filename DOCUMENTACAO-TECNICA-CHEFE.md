@@ -3,7 +3,7 @@
 ## 1. Ver Grupos (Opcional)
 
 **Método:** `GET`
-**URL:** `http://localhost:3000/api/grupos`
+**URL:** `http://api.dnotas.com.br:3000/api/grupos`
 **Headers:** Nenhum
 
 **Resposta:**
@@ -24,7 +24,7 @@
 ## 2. Enviar Imagem
 
 **Método:** `POST`
-**URL:** `http://localhost:3000/api/enviar-imagem`
+**URL:** `http://api.dnotas.com.br:3000/api/enviar-imagem`
 **Headers:** `Content-Type: application/json`
 
 **Body (JSON):**

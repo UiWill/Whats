@@ -69,39 +69,42 @@ class WhatsAppService {
     });
   }
 
-  static async sendImageBase64ToGroup(groupNumber, imageBase64, caption = '') {
+  static async sendImageBase64ToGroup(chatNumber, imageBase64, caption = '') {
     try {
       if (!this.isReady || !this.client) {
         throw new Error('WhatsApp não está conectado. Execute a inicialização primeiro.');
       }
 
-      // Formatar número do grupo
-      const groupId = this.formatGroupId(groupNumber);
+      // Formatar número (grupo ou individual)
+      const chatId = this.formatChatId(chatNumber);
+      const isGroup = chatId.includes('@g.us');
 
-      // Verificar se o grupo existe
+      // Verificar se o chat existe
       const chats = await this.client.listChats();
-      const groups = chats.filter(chat => chat.isGroup);
-      const targetGroup = groups.find(group => (group.id._serialized || group.id) === groupId);
+      const targetChat = chats.find(chat => (chat.id._serialized || chat.id) === chatId);
 
-      if (!targetGroup) {
-        throw new Error(`Grupo ${groupNumber} não encontrado. Verifique se o bot está no grupo.`);
+      if (!targetChat) {
+        const chatType = isGroup ? 'grupo' : 'contato';
+        throw new Error(`${chatType.charAt(0).toUpperCase() + chatType.slice(1)} ${chatNumber} não encontrado. Verifique se o bot tem acesso.`);
       }
 
       // Enviar imagem base64
       const result = await this.client.sendFileFromBase64(
-        groupId,
+        chatId,
         imageBase64,
         'imagem.jpg', // nome do arquivo
         caption
       );
 
-      console.log('✅ Imagem base64 enviada com sucesso para:', targetGroup.name);
+      const chatType = isGroup ? 'grupo' : 'contato';
+      console.log(`✅ Imagem base64 enviada com sucesso para ${chatType}:`, targetChat.name || chatNumber);
 
       return {
         success: true,
         messageId: result.id,
-        groupName: targetGroup.name,
-        groupId: groupId,
+        chatName: targetChat.name || chatNumber,
+        chatId: chatId,
+        isGroup: isGroup,
         timestamp: new Date().toISOString()
       };
 
@@ -115,7 +118,7 @@ class WhatsAppService {
     }
   }
 
-  static async sendImageToGroup(groupNumber, imagePath, caption = '') {
+  static async sendImageToGroup(chatNumber, imagePath, caption = '') {
     try {
       if (!this.isReady || !this.client) {
         throw new Error('WhatsApp não está conectado. Execute a inicialização primeiro.');
@@ -126,33 +129,36 @@ class WhatsAppService {
         throw new Error(`Arquivo de imagem não encontrado: ${imagePath}`);
       }
 
-      // Formatar número do grupo
-      const groupId = this.formatGroupId(groupNumber);
+      // Formatar número (grupo ou individual)
+      const chatId = this.formatChatId(chatNumber);
+      const isGroup = chatId.includes('@g.us');
 
-      // Verificar se o grupo existe
+      // Verificar se o chat existe
       const chats = await this.client.listChats();
-      const groups = chats.filter(chat => chat.isGroup);
-      const targetGroup = groups.find(group => (group.id._serialized || group.id) === groupId);
+      const targetChat = chats.find(chat => (chat.id._serialized || chat.id) === chatId);
 
-      if (!targetGroup) {
-        throw new Error(`Grupo ${groupNumber} não encontrado. Verifique se o bot está no grupo.`);
+      if (!targetChat) {
+        const chatType = isGroup ? 'grupo' : 'contato';
+        throw new Error(`${chatType.charAt(0).toUpperCase() + chatType.slice(1)} ${chatNumber} não encontrado. Verifique se o bot tem acesso.`);
       }
 
       // Enviar imagem
       const result = await this.client.sendFile(
-        groupId,
+        chatId,
         imagePath,
         path.basename(imagePath),
         caption
       );
 
-      console.log('✅ Imagem enviada com sucesso para:', targetGroup.name);
+      const chatType = isGroup ? 'grupo' : 'contato';
+      console.log(`✅ Imagem enviada com sucesso para ${chatType}:`, targetChat.name || chatNumber);
 
       return {
         success: true,
         messageId: result.id,
-        groupName: targetGroup.name,
-        groupId: groupId,
+        chatName: targetChat.name || chatNumber,
+        chatId: chatId,
+        isGroup: isGroup,
         timestamp: new Date().toISOString()
       };
 
@@ -166,37 +172,49 @@ class WhatsAppService {
     }
   }
 
-  static formatGroupId(groupNumber) {
-    // Remove caracteres especiais e formata como ID do grupo
-    const cleanNumber = groupNumber.toString().replace(/\D/g, '');
-    return `${cleanNumber}@g.us`;
+  static formatChatId(number) {
+    // Remove caracteres especiais
+    const cleanNumber = number.toString().replace(/\D/g, '');
+
+    // Detectar se é grupo ou número individual
+    // Grupos geralmente têm mais de 11 dígitos (formato: 120363142926103927)
+    // Números individuais têm entre 10-14 dígitos (formato brasileiro: 5537991470016)
+    if (cleanNumber.length > 15) {
+      // É um grupo
+      return `${cleanNumber}@g.us`;
+    } else {
+      // É um número individual
+      return `${cleanNumber}@c.us`;
+    }
   }
 
-  static async getGroupInfo(groupNumber) {
+  static async getChatInfo(chatNumber) {
     try {
       if (!this.isReady || !this.client) {
         throw new Error('WhatsApp não está conectado');
       }
 
-      const groupId = this.formatGroupId(groupNumber);
+      const chatId = this.formatChatId(chatNumber);
+      const isGroup = chatId.includes('@g.us');
       const chats = await this.client.listChats();
-      const groups = chats.filter(chat => chat.isGroup);
-      const group = groups.find(g => (g.id._serialized || g.id) === groupId);
+      const chat = chats.find(c => (c.id._serialized || c.id) === chatId);
 
-      if (!group) {
+      if (!chat) {
+        const chatType = isGroup ? 'grupo' : 'contato';
         return {
           success: false,
-          message: `Grupo ${groupNumber} não encontrado`
+          message: `${chatType.charAt(0).toUpperCase() + chatType.slice(1)} ${chatNumber} não encontrado`
         };
       }
 
       return {
         success: true,
         data: {
-          id: group.id,
-          name: group.name,
-          participantsCount: group.participants ? group.participants.length : 0,
-          isGroup: group.isGroup
+          id: chat.id,
+          name: chat.name || chatNumber,
+          participantsCount: chat.participants ? chat.participants.length : (isGroup ? 0 : 1),
+          isGroup: chat.isGroup || isGroup,
+          chatType: isGroup ? 'grupo' : 'individual'
         }
       };
 
