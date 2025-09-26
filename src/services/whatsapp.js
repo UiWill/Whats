@@ -83,31 +83,18 @@ class WhatsAppService {
       const chats = await this.client.listChats();
       let targetChat = chats.find(chat => (chat.id._serialized || chat.id) === chatId);
 
-      // Se é um contato individual e não existe, tentar criar/verificar se o número é válido
+      // Se é um contato individual e não existe, tentar enviar diretamente
+      // (o WhatsApp criará a conversa automaticamente se o número for válido)
       if (!targetChat && !isGroup) {
-        try {
-          // Verificar se o número existe no WhatsApp
-          const numberCheck = await this.client.checkNumberStatus(chatId);
+        console.log(`📞 Contato ${chatNumber} não encontrado na lista. Tentando envio direto...`);
 
-          if (!numberCheck.exists) {
-            throw new Error(`Número ${chatNumber} não está registrado no WhatsApp`);
-          }
-
-          console.log(`📞 Número ${chatNumber} validado, criando conversa...`);
-
-          // Criar/inicializar chat enviando uma mensagem simples primeiro
-          await this.client.sendText(chatId, ' '); // Mensagem vazia para inicializar
-
-          // Aguardar um momento para o chat ser criado
-          await new Promise(resolve => setTimeout(resolve, 1000));
-
-          // Buscar novamente o chat
-          const updatedChats = await this.client.listChats();
-          targetChat = updatedChats.find(chat => (chat.id._serialized || chat.id) === chatId);
-
-        } catch (error) {
-          throw new Error(`Erro ao validar número ${chatNumber}: ${error.message}`);
-        }
+        // Para números individuais, tentamos enviar diretamente
+        // Se der erro, será capturado na tentativa de envio
+        targetChat = {
+          id: { _serialized: chatId },
+          name: chatNumber,
+          isGroup: false
+        };
       }
 
       if (!targetChat) {
