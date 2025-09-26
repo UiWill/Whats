@@ -83,18 +83,43 @@ class WhatsAppService {
       const chats = await this.client.listChats();
       let targetChat = chats.find(chat => (chat.id._serialized || chat.id) === chatId);
 
-      // Se é um contato individual e não existe, tentar enviar diretamente
-      // (o WhatsApp criará a conversa automaticamente se o número for válido)
+      // Se é um contato individual e não existe, tentar criar a conversa primeiro
       if (!targetChat && !isGroup) {
-        console.log(`📞 Contato ${chatNumber} não encontrado na lista. Tentando envio direto...`);
+        console.log(`📞 Contato ${chatNumber} não encontrado na lista. Criando conversa...`);
 
-        // Para números individuais, tentamos enviar diretamente
-        // Se der erro, será capturado na tentativa de envio
-        targetChat = {
-          id: { _serialized: chatId },
-          name: chatNumber,
-          isGroup: false
-        };
+        try {
+          // 1. Enviar uma mensagem de texto primeiro para inicializar a conversa
+          console.log(`💬 Enviando mensagem inicial para criar conversa...`);
+          await this.client.sendText(chatId, '👋');
+
+          // 2. Aguardar um pouco para a conversa ser criada
+          await new Promise(resolve => setTimeout(resolve, 2000));
+
+          // 3. Buscar novamente o chat
+          const updatedChats = await this.client.listChats();
+          targetChat = updatedChats.find(chat => (chat.id._serialized || chat.id) === chatId);
+
+          if (targetChat) {
+            console.log(`✅ Conversa criada com sucesso para ${chatNumber}`);
+          } else {
+            // Se ainda não encontrou, criar um objeto temporário
+            console.log(`⚠️ Conversa não encontrada após criação. Tentando envio direto...`);
+            targetChat = {
+              id: { _serialized: chatId },
+              name: chatNumber,
+              isGroup: false
+            };
+          }
+
+        } catch (initError) {
+          console.log(`⚠️ Erro ao inicializar conversa: ${initError.message}. Tentando envio direto...`);
+          // Se der erro na inicialização, criar objeto temporário mesmo assim
+          targetChat = {
+            id: { _serialized: chatId },
+            name: chatNumber,
+            isGroup: false
+          };
+        }
       }
 
       if (!targetChat) {
