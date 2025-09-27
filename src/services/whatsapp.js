@@ -324,6 +324,74 @@ class WhatsAppService {
     }
   }
 
+  static async sendTextToGroup(chatNumber, message) {
+    try {
+      if (!this.isReady || !this.client) {
+        throw new Error('WhatsApp não está conectado. Execute a inicialização primeiro.');
+      }
+
+      // Formatar número (grupo ou individual)
+      const chatId = this.formatChatId(chatNumber);
+      const isGroup = chatId.includes('@g.us');
+
+      // Verificar se o chat existe
+      const chats = await this.client.listChats();
+      let targetChat = chats.find(chat => (chat.id._serialized || chat.id) === chatId);
+
+      // Se é um contato individual e não existe, tentar criar a conversa primeiro
+      if (!targetChat && !isGroup) {
+        console.log(`📞 Contato ${chatNumber} não encontrado na lista. Criando conversa...`);
+
+        try {
+          // Enviar mensagem diretamente para criar conversa
+          const result = await this.client.sendText(chatId, message);
+
+          console.log(`✅ Mensagem enviada para novo contato ${chatNumber}`);
+
+          return {
+            success: true,
+            messageId: result.id,
+            chatName: chatNumber,
+            chatId: chatId,
+            isGroup: false,
+            timestamp: new Date().toISOString()
+          };
+
+        } catch (initError) {
+          throw new Error(`Erro ao enviar mensagem para ${chatNumber}: ${initError.message}`);
+        }
+      }
+
+      if (!targetChat) {
+        const chatType = isGroup ? 'grupo' : 'contato';
+        throw new Error(`${chatType.charAt(0).toUpperCase() + chatType.slice(1)} ${chatNumber} não encontrado. Verifique se o bot tem acesso.`);
+      }
+
+      // Enviar mensagem de texto
+      const result = await this.client.sendText(chatId, message);
+
+      const chatType = isGroup ? 'grupo' : 'contato';
+      console.log(`✅ Mensagem de texto enviada com sucesso para ${chatType}:`, targetChat.name || chatNumber);
+
+      return {
+        success: true,
+        messageId: result.id,
+        chatName: targetChat.name || chatNumber,
+        chatId: chatId,
+        isGroup: isGroup,
+        timestamp: new Date().toISOString()
+      };
+
+    } catch (error) {
+      console.error('❌ Erro ao enviar mensagem de texto:', error.message);
+      return {
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
   static async close() {
     try {
       if (this.client) {

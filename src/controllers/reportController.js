@@ -8,16 +8,17 @@ class ReportController {
     const { imagemBase64, numeroGrupo, mensagem } = req.body;
 
     // Log da requisição
-    logActivity('INFO', 'Iniciando envio de imagem', { numeroGrupo, temMensagem: !!mensagem, ip: req.ip });
+    const temImagem = imagemBase64 && imagemBase64.trim() !== '';
+    logActivity('INFO', 'Iniciando envio via WhatsApp', {
+      numeroGrupo,
+      temImagem,
+      temMensagem: !!mensagem,
+      tipoEnvio: temImagem ? 'imagem_com_texto' : 'apenas_texto',
+      ip: req.ip
+    });
 
     try {
       // Validações básicas
-      if (!imagemBase64) {
-        const error = { success: false, message: 'Imagem (base64 ou caminho) é obrigatória', code: 'MISSING_IMAGE' };
-        logActivity('ERROR', 'Imagem não fornecida', { ip: req.ip });
-        return res.status(400).json(error);
-      }
-
       if (!numeroGrupo) {
         const error = { success: false, message: 'Número do destinatário é obrigatório', code: 'MISSING_RECIPIENT' };
         logActivity('ERROR', 'Número do destinatário não fornecido', { ip: req.ip });
@@ -33,15 +34,24 @@ class ReportController {
         return res.status(400).json(error);
       }
 
-      // Verificar se arquivo base64 é válido (imagem ou PDF)
-      const base64Regex = /^data:(image\/(jpeg|jpg|png|gif)|application\/pdf);base64,/;
-      if (!base64Regex.test(imagemBase64)) {
-        const error = {
-          success: false,
-          message: 'Formato de arquivo inválido. Use: data:image/jpeg;base64,... ou data:application/pdf;base64,...',
-          code: 'INVALID_FILE_FORMAT'
-        };
-        logActivity('ERROR', 'Formato de arquivo inválido', { numeroLimpo });
+      // Se tem imagem, validar formato
+      if (imagemBase64 && imagemBase64.trim() !== '') {
+        const base64Regex = /^data:(image\/(jpeg|jpg|png|gif)|application\/pdf);base64,/;
+        if (!base64Regex.test(imagemBase64)) {
+          const error = {
+            success: false,
+            message: 'Formato de arquivo inválido. Use: data:image/jpeg;base64,... ou data:application/pdf;base64,...',
+            code: 'INVALID_FILE_FORMAT'
+          };
+          logActivity('ERROR', 'Formato de arquivo inválido', { numeroLimpo });
+          return res.status(400).json(error);
+        }
+      }
+
+      // Se não tem imagem nem mensagem, retornar erro
+      if ((!imagemBase64 || imagemBase64.trim() === '') && (!mensagem || mensagem.trim() === '')) {
+        const error = { success: false, message: 'É obrigatório enviar uma imagem ou uma mensagem', code: 'MISSING_CONTENT' };
+        logActivity('ERROR', 'Nem imagem nem mensagem fornecidas', { ip: req.ip });
         return res.status(400).json(error);
       }
 
@@ -56,15 +66,29 @@ class ReportController {
       const isGroup = numeroLimpo.length > 15;
       const chatType = isGroup ? 'grupo' : 'contato';
 
-      // Enviar imagem
-      console.log(`📱 Enviando imagem para ${chatType}: ${numeroLimpo}`);
-      console.log(`💬 Mensagem: ${mensagem || 'Sem mensagem'}`);
+      let whatsappResult;
 
-      const whatsappResult = await WhatsAppService.sendImageBase64ToGroup(
-        numeroLimpo,
-        imagemBase64,
-        mensagem || ''
-      );
+      // Verificar se tem imagem para enviar
+      if (imagemBase64 && imagemBase64.trim() !== '') {
+        // Enviar imagem com mensagem
+        console.log(`📱 Enviando imagem para ${chatType}: ${numeroLimpo}`);
+        console.log(`💬 Mensagem: ${mensagem || 'Sem mensagem'}`);
+
+        whatsappResult = await WhatsAppService.sendImageBase64ToGroup(
+          numeroLimpo,
+          imagemBase64,
+          mensagem || ''
+        );
+      } else {
+        // Enviar apenas mensagem de texto
+        console.log(`📱 Enviando mensagem de texto para ${chatType}: ${numeroLimpo}`);
+        console.log(`💬 Mensagem: ${mensagem}`);
+
+        whatsappResult = await WhatsAppService.sendTextToGroup(
+          numeroLimpo,
+          mensagem
+        );
+      }
 
       if (!whatsappResult.success) {
         const error = {
@@ -82,6 +106,8 @@ class ReportController {
 
       // Resposta de sucesso
       const duration = Date.now() - startTime;
+      const temImagem = imagemBase64 && imagemBase64.trim() !== '';
+
       const response = {
         success: true,
         status: 'enviado',
@@ -92,20 +118,22 @@ class ReportController {
           mensagem: mensagem || null,
           messageId: whatsappResult.messageId,
           timestamp: whatsappResult.timestamp,
-          chatName: whatsappResult.chatName || null
+          chatName: whatsappResult.chatName || null,
+          tipoEnvio: temImagem ? 'imagem_com_texto' : 'apenas_texto'
         },
         meta: {
           duration: `${duration}ms`,
           processedAt: new Date().toISOString(),
-          imagemTamanho: Math.round(imagemBase64.length / 1024) + 'KB'
+          imagemTamanho: temImagem ? Math.round(imagemBase64.length / 1024) + 'KB' : null
         }
       };
 
-      logActivity('SUCCESS', 'Imagem enviada com sucesso', {
+      logActivity('SUCCESS', `${temImagem ? 'Imagem' : 'Mensagem'} enviada com sucesso`, {
         destinatario: numeroLimpo,
         chatType: chatType,
         messageId: whatsappResult.messageId,
         duration,
+        tipoEnvio: response.data.tipoEnvio,
         imagemTamanho: response.meta.imagemTamanho
       });
 
